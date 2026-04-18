@@ -132,6 +132,7 @@ $register_ids(EndLevelLayer) {
         for (int i = 1; i < currentCoin; i++) {
             if (child->getID().empty() && child->getPosition() == coinPos[i - 1]) {
                 child->setID(fmt::format("coin-{}-sprite", i));
+                idx += 1; // fix the controller issues overriding it hopefully
             }
         }
     }
