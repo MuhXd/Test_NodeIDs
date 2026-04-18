@@ -112,9 +112,10 @@ $register_ids(EndLevelLayer) {
         leaderboardButton->setID("practice-retry-button");
     }
 
-    int currentCoin = 1;
+    int currentCoin = 0;
+    auto mainLayerChildren = CCArrayExt<CCNode*>(m_mainLayer->getChildren());
     std::vector<CCPoint> coinPos;
-    for (auto child : CCArrayExt<CCNode*>(m_mainLayer->getChildren())) {
+    for (auto child : mainLayerChildren) {
         for (auto framename : {
             "secretCoin_b_01_001.png",
             "secretCoin_2_b_01_001.png"
@@ -127,24 +128,42 @@ $register_ids(EndLevelLayer) {
             }
         }
     }
-
-    for (auto child : CCArrayExt<CCNode*>(m_mainLayer->getChildren())) {
-        for (int i = 1; i < currentCoin; i++) {
-            if (child->getID().empty() && child->getPosition() == coinPos[i - 1]) {
-                child->setID(fmt::format("coin-{}-sprite", i));
-                idx += 1; // fix the controller issues overriding it hopefully
-            }
-        }
-    }
-
+    /* 
+    i was using it for a fullbreak but also goto aftercoinIDS is faster since 
+    it doesn't make sense to add coins if there are none since it will already do this
+    in the for loop
+    */
+    int matchedCoins = 0; // remove the "jump from this goto statement to its label is a Microsoft extension [-Wmicrosoft-goto]"
+    if (currentCoin <= 0) goto aftercoinIDS;
+    // fun fact the controller icon is always set before this one
     for (auto child : CCArrayExt<CCNode*>(m_coinsToAnimate)) {
-        for (int i = 1; i < currentCoin; i++) {
-            if (child->getID().empty() && child->getPosition() == coinPos[i - 1]) {
+        for (int i = 0; i < currentCoin; i++) {
+            if (child->getID().empty() && child->getPosition() == coinPos[i]) {
                 child->setID(fmt::format("coin-{}-sprite", i));
+                matchedCoins++;
+                break;
             }
         }
     }
-
+    // idx should be kept the same
+    if (matchedCoins >= currentCoin) goto aftercoinIDS;
+    
+    // idx is after all the other ids, controller icons are always set after these for some reason?
+	for (int fl = idx; fl < mainLayerChildren.size(); fl++) {
+        auto child = mainLayerChildren[fl];
+        for (int i = 0; i < currentCoin; i++) {
+            if (child->getID().empty() && child->getPosition() == coinPos[i]) {
+                child->setID(fmt::format("coin-{}-sprite", i));
+                idx = fl+1; 
+                matchedCoins++;
+                 if (matchedCoins >= currentCoin) {
+                    goto aftercoinIDS; // i wanted a double break whatever
+                }
+                break; // already set a id to this thing
+            };
+        };
+    };
+    aftercoinIDS:
     if (PlatformToolbox::isControllerConnected()) {
         setIDs(
             m_mainLayer,
@@ -154,7 +173,6 @@ $register_ids(EndLevelLayer) {
         );
         idx += 2;
     }
-
     // original code by alphalaneous, adapted to node IDs by raydeeux
     std::reverse(nodesToMove.begin(), nodesToMove.end());
 
